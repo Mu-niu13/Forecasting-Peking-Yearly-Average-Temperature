@@ -47,28 +47,28 @@ nocite: '@*'
 
 ## Plot and Analyze
 
-![Original Time Series Data](/Users/mu/Documents/Spring 2023/PSTAT 174/Final Project/original_data.png)
+![Original Time Series Data](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/original_data.png)
 \
 
 |       From the time series plot above, I noticed that there is an increasing trend but no seasonal component. Also, I noticed the change in trend. To be more specific, even though the overall trend of this graph is increasing, we can see that the data increased very slowly before 1950. However, the rate of increase goes up significantly after 1950. The potential reason that leads to this phenomenon is that the People's Republic of China was established in 1949, and China has started industrialization since then. Human activities, such as industrialization, released large amounts of carbon dioxide, which changed the earth's climate and increased the temperature.
 
 ## Transformation and Differencing
 
-![Box-Cox and Histogram](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/transformation.png)
+![Box-Cox and Histogram](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/transformation.png)
 \
 
 |       The plot on the left is the Box-Cox plot. It shows that 1 is within the 95% Confidence Interval for the value of $\lambda$. Also, the histogram on the right shows us the distribution of the original data. It appears to be normally distributed and has a bell shape. Hence, it's safe to conclude that a transformation is not necessary, and I decided not to transform the data.
 
 |       I differenced the data at lag one to eliminate the trend since I observed an increasing trend. But I don't have to difference the data at other lag since I didn't observe any seasonal component, and it's also not reasonable to have seasonality in yearly data. After I differenced the data once at lag 1, the variance decreased from 0.48 to 0.33. However, after I differenced twice at lag 1, the variance increased to 0.93, which means over differencing. Hence, I decided to only difference the data once at lag one.
 
-![De-trended Data](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/detrend.png)
+![De-trended Data](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/detrend.png)
 \
 
 |       The plot above is the data after differencing once at lag one, or the de-trended data. As we can see, there is no trend and the variance looks stable over time, so it's safe to conclude that my time series data is stationary now.
 
 ## Preliminary Model Identification
 
-![ACF and PACF](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/acf_pacf.png)
+![ACF and PACF](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/acf_pacf.png)
 \
 
 |       The ACF plot shows that the ACF is statistically insignificant for lag greater than 1, and the PACF plot shows that the PACF is statistically insignificant for lag greater than 3. Also, we differenced data once at lag one. So the potential values of the parameters in my model are:
@@ -145,17 +145,17 @@ Let **$X_t$** denotes our original data,
 
 $(1-0.2373_{0.0963}B)\nabla_1X_t = (1-0.8656_{0.0547}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2308$
 
-![Roots and Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/a.1.png)
+![Roots and Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/a.1.png)
 \
 
 |       From the plots above, I found out that the roots of both Auto Regressive characteristic polynomial and Moving Average characteristic polynomial are outside of the unit circle. Also, I noticed that $|\theta_1| < 1$ and $|\phi_1| < 1$, so it's safe to conclude that this model is both stationary and invertible. The plot of the residuals shows no trend, no visible change of variance, no seasonality, and the sample mean is almost zero.
 
-![Histogram and Q-Q Plot of Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/a.2.png)
+![Histogram and Q-Q Plot of Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/a.2.png)
 \
 
 |       The histogram above indicates that the residuals appear to be normally distributed since it has a bell shape. Moreover, in the Q-Q plot, more than 95% of the points are between -2 and 2, which again indicates the residuals follow normal distribution.
 
-![ACF and PACF of Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/a.3.png)
+![ACF and PACF of Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/a.3.png)
 \
 
 |       From the plots above, I found out that all the ACF of residuals are within the confidence interval, which can be counted as zeros. However, I noticed that PACF at lag 14 is slightly out of the confidence interval, and I decided to see the results of other tests. It doesn't matter if the residuals of this model pass all other tests.
@@ -176,17 +176,17 @@ $(1-0.2373_{0.0963}B)\nabla_1X_t = (1-0.8656_{0.0547}B)Z_t$ with $\hat{\sigma}^2
 
 $\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2371$
 
-![Roots and Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/b.1.png)
+![Roots and Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/b.1.png)
 \
 
 |       From the plots above, I found out that the root of the characteristic polynomial are outside of the unit circle. Also, I noticed that $|\theta_1| < 1$, so it's safe to conclude that this model is both stationary and invertible. The plot of the residuals shows no trend, no visible change of variance, no seasonality, and the sample mean is almost zero.
 
-![Histogram and Q-Q Plot of Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/b.2.png)
+![Histogram and Q-Q Plot of Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/b.2.png)
 \
 
 |       The histogram above indicates that the residuals appear to be normally distributed since it has a bell shape. Moreover, in the Q-Q plot, more than 95% of the points are between -2 and 2, which again indicates the residuals follow normal distribution.
 
-![ACF and PACF of Residuals](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/b.3.png)
+![ACF and PACF of Residuals](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/b.3.png)
 \
 
 |       From the plots above, I found out that all the ACF of residuals are within the confidence interval, which can be counted as zeros. However, I noticed that PACF at lag 14 is slightly out of the confidence interval, and I decided to see the results of other tests. It doesn't matter if the residuals of this model pass all other tests.
@@ -209,10 +209,10 @@ $\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2371$
 
 ## Forecasting
 
-![ARIMA(0,1,1) Model Forecasting](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/f1.png)
-![ARIMA(0,1,1) Model Forecasting with Test Sets](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/f2.png)
-![ARIMA(0,1,1) Model Forecasting(Zoom In)](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/fz1.png)
-![ARIMA(0,1,1) Model Forecasting with Test Sets(Zoom In)](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/fz2.png)
+![ARIMA(0,1,1) Model Forecasting](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/f1.png)
+![ARIMA(0,1,1) Model Forecasting with Test Sets](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/f2.png)
+![ARIMA(0,1,1) Model Forecasting(Zoom In)](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/fz1.png)
+![ARIMA(0,1,1) Model Forecasting with Test Sets(Zoom In)](/Users/mu/Documents/Github/Forecasting-Peking-Yearly-Average-Temperature/image/fz2.png)
 \
 
 |       The first two plots include the original series, forecasted values using my final model, and the confidence interval for the forecasted values. I also included two zoom-in plots of the first two plots to be able to see the detail clearly. From the plots, I noticed that the test sets are within the confidence intervals, which means this model is satisfactory and I have successfully addressed my problem.
@@ -230,7 +230,7 @@ $\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2371$
 ## Appendix
 ```{r eval = FALSE}
 # Data Tidying
-raw <- read.csv('GlobalLandTemperaturesByMajorCity.csv') # Read in the data
+raw <- read.csv('../data/GlobalLandTemperaturesByMajorCity.csv') # Read in the data
 pek <- raw[raw$City == "Peking",] # Filter observations on Peking
 pek.temp <- pek[,1:2] # Filter variables: only date and average temperature
 sum(is.na(pek.temp)) # Total number of missing values
@@ -307,7 +307,7 @@ for(p in 0:3) {
 # For ARIMA (1,1,1)
 op <- par(mfrow = c(1,2))
 res.arima111 <- residuals(arima111)
-source('plot.roots.R')
+source('../scratch/plot.roots.R')
 plot.roots(polyroot(c(1, -0.2373)),polyroot(c(1, -0.8656)), main="ARIMA(1,1,1) Roots ")
 plot.ts(res.arima111, main = 'Residuals of ARIMA(1,1,1)')
 abline(h=mean(res.arima111), col="blue")
