@@ -47,7 +47,7 @@ nocite: '@*'
 
 ## Plot and Analyze
 
-![Original Time Series Data](/Users/mu/Desktop/Spring 2023/PSTAT 174/Final Project/original_data.png)
+![Original Time Series Data](/Users/mu/Documents/Spring 2023/PSTAT 174/Final Project/original_data.png)
 \
 
 |       From the time series plot above, I noticed that there is an increasing trend but no seasonal component. Also, I noticed the change in trend. To be more specific, even though the overall trend of this graph is increasing, we can see that the data increased very slowly before 1950. However, the rate of increase goes up significantly after 1950. The potential reason that leads to this phenomenon is that the People's Republic of China was established in 1949, and China has started industrialization since then. Human activities, such as industrialization, released large amounts of carbon dioxide, which changed the earth's climate and increased the temperature.
