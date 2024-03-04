@@ -1,0 +1,443 @@
+---
+title: "PSTAT 174 Project Data Tidy"
+author: "Mu Niu"
+date: "2023-05-09"
+output: pdf_document
+---
+
+**Data Preprocessing**
+
+\
+
+(1) We first read in the csv file to get the raw data:
+```{r}
+raw <- read.csv('GlobalLandTemperaturesByMajorCity.csv')
+head(raw) #Look at the raw data
+```
+
+\
+
+(2) My goal is to forecast the temperature of Peking, the capital of China, so I have to filter the data set:
+```{r}
+pek <- raw[raw$City == "Peking",]
+head(pek)
+```
+
+
+* Since we want to work on univariate time series, we only want to keep the variable that we want to forecast, which is the Average Temperature:
+```{r}
+pek.temp <- pek[,1:2]
+head(pek.temp)
+```
+
+\
+
+(3) Now, we want to check whether there is missing values:
+```{r}
+sum(is.na(pek.temp))
+```
+
+
+
+Knowing there are 14 missing values, we want to know how the missing values are distributed(index of NaN):
+```{r}
+pek.temp[is.na(pek.temp$AverageTemperature) == TRUE,]
+```
+
+We notice that we don't have observation for October 1832, all year of 1838, and September 2013.
+
+\
+
+(4) Fill the Missing Values:
+
+* For October 1832: Take the mean value of the neighbors average temperature
+* For September 2013: This is the last observation in our data set, so we can't take the mean value of the neighbors average temperature. What we want to do is take the mean value of the two previous months' average temperature, since July, August, and September are in the same quarter of the year.
+* For all 12 months of 1838: Even the data set is monthly, I want to make it yearly data by taking the average temperature of 12 months. Hence, we can first fill all 12 months in 1838 by 0. After we get the yearly data, we can change it to the mean value of the 2 neighbor year average temperature.
+
+\
+
+We first fill the value of October 1832, September 2013, and assign 0 to 1838 all year:
+```{r}
+pek.temp["176394","AverageTemperature"] <- (pek.temp["176395","AverageTemperature"]+pek.temp["176393","AverageTemperature"]) /2 #October 1832
+pek.temp["178565","AverageTemperature"] <- (pek.temp["178563","AverageTemperature"]+pek.temp["178564","AverageTemperature"])/2 #September 2013
+for (index in as.character(seq(176457,176468))) {
+  pek.temp[index, "AverageTemperature"] <- 0
+}
+
+# Check Missing Values
+sum(is.na(pek.temp))
+```
+
+\
+
+(5) Convert to yearly data:
+
+\
+
+Looking at the data set, I noticed that both 1820 and 2013 don't have observations for all 12 months. Considering the lack of particular months might lead to mistake, I decided to drop these years.
+```{r}
+pek.temp <- pek.temp[as.character(seq(176253,178556)),] # Monthly temperature data from 1821 to 2012
+```
+
+\
+
+Then, we convert the monthly data to yearly data by taking average.(yearly data is more smooth than monthly data, and ideal to work with):
+```{r}
+year.temp <- c()
+for (jan in seq(1,2304,12)){
+  dec <- jan+11
+  year.temp <- c(year.temp,mean(pek.temp[jan:dec,2]))
+}
+```
+
+\
+
+Now, we can construct a new data frame by using the yearly data, and fill the value of 1838 by using the mean of its neighbors:
+```{r}
+Year <- c(1821:2012)
+data <- data.frame(Year = Year,
+                   AverageTemperature = year.temp)
+data[data$Year == 1838, "AverageTemperature"] <- (data[data$Year == 1837, "AverageTemperature"] + 
+                                                  data[data$Year ==1839,"AverageTemperature"])/2
+head(data)
+```
+
+We need split the data into two parts: we use the first part to model the data, and the the second part to test our model
+```{r}
+model.data <- data[Year <= 2010, ]
+test.data <- data[Year > 2010, ]
+```
+
+
+Now, we finished the process of data tidying, and can use this data for time series study.
+```{r}
+# Export the data set
+write.csv(data, "Peking.Temp.1821-2012.csv")
+write.csv(model.data, "train.1821-2011.csv")
+write.csv(test.data, "test.2012.csv")
+```
+
+\
+
+## Transformation and Differencing
+
+Original Peking temperature data set from 1821-2011:
+```{r}
+op <- par(mfrow=c(2,2))
+pek.ts <- ts(model.data[,2], start = 1821, frequency = 1)
+ts.plot(pek.ts, gpars=list(xlab="Year", ylab="Temperature"))
+acf(pek.ts)
+pacf(pek.ts)
+par(op)
+```
+
+From the plots above, we can see that there is no seasonality but an upward trend. The variance is relatively stable, but we need to check the value of $\lambda$ and the histograms to see if transformation is necessary.
+
+\
+
+**Transformation**
+
+Now, let's see if we need any transformations:
+```{r}
+library(MASS)
+t = 1:length(pek.ts)
+fit = lm(pek.ts ~ t)
+bcTransform = boxcox(pek.ts ~ t,plotit = T)
+lambda = bcTransform$x[which(bcTransform$y == max(bcTransform$y))]
+pek.bc = (1/lambda)*(pek.ts^lambda-1)
+op <- par(mfrow=c(2,2))
+ts.plot(pek.bc,main = "Box-Cox", xlab='Year',ylab='Temperature')
+ts.plot(pek.ts,main = "Original", xlab='Year',ylab='Temperature')
+ts.plot(log(pek.ts), main = "Log Transform", xlab='Year',ylab='Temperature')
+ts.plot(sqrt(pek.ts), main = "Square Root Transform", xlab='Year',ylab='Temperature')
+par(op)
+```
+
+```{r}
+op <- par(mfrow=c(2,2))
+hist(pek.bc, main = 'Box-Cox')
+hist(log(pek.ts),main='log')
+hist(sqrt(pek.ts),main= 'Sqrt')
+hist(pek.ts, main = 'Original')
+par(op)
+```
+
+The Box-Cox plot shows that 1 is within the 95% Confidence Interval for the value of $\lambda$, also the histogram, which tells us the distribution of the data before transformation, appears to be normally distributed and has a bell shape. Hence, it's safe to conclude that our data doesn't need to be transformed.
+
+\
+
+**Differencing**
+
+Since we noticed the upward trend, let's first difference the data once at lag 1 and compare its variance with the variance of data before differencing:
+```{r}
+var(pek.ts) # Before Diff
+dt.pek.ts <- diff(pek.ts, 1)
+(var(dt.pek.ts)) # Diff once at lag 1
+```
+
+\
+
+Then, let's difference again at lag 1 and compare their variance:
+```{r}
+dt2.pek.ts <- diff(dt.pek.ts, 1)
+(var(dt2.pek.ts)) # Diff twice at lag 1
+```
+
+We can see the variance increased after we differentiate twice, which means over differencing. Hence, we want to use the diff once data.
+
+\
+
+## Model Identification
+
+We first want to guess the model based on the ACF and PACF:
+```{r}
+plot(dt.pek.ts)
+acf(dt.pek.ts, lag.max = 40, main = 'ACF of De-trended Data')
+pacf(dt.pek.ts, lag.max = 40,  main = 'PACF of De-trended Data')
+```
+
+Now, we can fit different ARMA models using maximum likelihood estimation and compare the model fits using AICc:
+
+* p: 0,1,2,3
+* d: 1
+* q: 0,1
+
+```{r}
+library(qpcR)
+# Construct Matrix
+aiccs <- matrix(NA, nr = 4, nc = 2)
+dimnames(aiccs) = list(p=0:3, q=0:1)
+
+# Use for loop to calculate the AICc matrix
+for(p in 0:3) {
+  for(q in 0:1) {
+    aiccs[p+1,q+1] = AICc(arima(dt.pek.ts, order = c(p,0,q), method="ML"))
+  } }
+aiccs
+```
+
+Another way to identify the model is to use the automatic arima fit function by Rob Hyndman:
+```{r}
+library(forecast)
+auto.arima(pek.ts)
+```
+
+We can choose the models that has low AICc from the table: $ARIMA(1,1,1)$ and $ARIMA(2,1,1)$
+
+\
+
+## Coefficients Estimation and Diagnostic Checking
+
+* Coefficients Estimation
+
+Now, we can fit the data in the chosen models, which is $ARIMA(1,1,1)$ and $ARIMA(2,1,1)$:
+
+* $ARIMA(1,1,1)$
+```{r}
+(arima111 <- arima(pek.ts, order=c(1,1,1), method="ML"))
+```
+
+* $ARIMA(2,1,1)$
+```{r}
+(arima211 <- arima(pek.ts, order=c(2,1,1), method="ML"))
+```
+
+Since the 95% Confidence Interval of $\phi_2$ contains 0, we can set it to zero. But doing so will give us $ARIMA(1,1,1)$ model, which is exactly the same with the previous one. So we remove $ARIMA(2,1,1)$ and consider $MA(1)$ with AICc = 270.5249 and $AR(3)$ with AICc = 281.9829, because they have low AICc in comparison with other models:
+
+```{r}
+(ma1 <- arima(pek.ts, order=c(0,1,1), method="ML"))
+```
+
+```{r}
+(ar3 <- arima(pek.ts, order=c(3,1,0), method="ML"))
+```
+
+Since $MA(1)$ has fewer parameters and lower AICc value(270.5249 < 281.9829), it's better to only take the $MA(1)$ model and $ARIMA(1,1,1)$ to diagnostic checking.
+
+\
+
+* Diagnostic Checking
+
+Let's first write out the two models:
+
+Let $X_t$ denotes our data,
+
+(A) $ARIMA(1,1,1)$: 
+
+$(1-0.2373_{0.0963}B)\nabla_1X_t = (1-0.8656_{0.0547}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2308$
+
+(B) $MA(1)$: 
+
+$\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2371$
+
+\
+
+(1) Invertibility and Stationarity
+
+For model (A):
+
+$(1-0.2373_{0.0963}B)\nabla_1X_t = (1-0.8656_{0.0547}B)Z_t$
+
+Since $|\theta_1| < 1$ and $|\phi_1| < 1$, we can conclude that this model is both stationary and invertible. We can also plot the roots:
+```{r}
+source('plot.roots.R')
+plot.roots(polyroot(c(1, -0.2373)),polyroot(c(1, -0.8656)), main="Model A Roots ")
+```
+
+From the plot above, we can see that the root of both Auto Regressive and Moving Average are outside the unit circle, which confirms our conclusion.
+
+\
+
+For model (B):
+
+$\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$
+
+Since this is a pure MA model, it's automatically stationary. Also, $|\theta_1| < 1$, so we can conclude that this model is both stationary and invertible. We can also plot the roots:
+
+```{r}
+source('plot.roots.R')
+plot.roots(NULL, polyroot(c(1, -0.7186)), main="Model B Roots ")
+```
+
+From, the plot above, we can see that the root is within the unit circle, which verifies our conclusion.
+
+\
+
+(2) Diagnostic Checking on Model (A): $ARIMA(1,1,1)$
+```{r}
+op <- par(mfrow = c(1,2))
+res.arima111 <- residuals(arima111)
+source('plot.roots.R')
+plot.roots(polyroot(c(1, -0.2373)),polyroot(c(1, -0.8656)), main="ARIMA(1,1,1) Roots ")
+plot.ts(res.arima111, main = 'Residuals of ARIMA(1,1,1)')
+abline(h=mean(res.arima111), col="blue")
+hist(res.arima111, breaks = 20, xlab="", prob=TRUE, main = 'ARIMA(1,1,1) Residuals Histogram')
+m.arima111 <- mean(res.arima111)
+std.arima111 <- sqrt(var(res.arima111))
+curve(dnorm(x,m.arima111,std.arima111), add=TRUE )
+qqnorm(res.arima111,main= "Normal Q-Q Plot for ARIMA(1,1,1)")
+qqline(res.arima111,col="blue")
+acf(res.arima111, lag.max=40, main = 'ACF of ARIMA(1,1,1) Residuals')
+pacf(res.arima111, lag.max=40, main = 'PACF of ARIMA(1,1,1) Residuals')
+par(op)
+```
+
+From the plots above, we can say that there is no trend, no visible change of variance, no seasonality, sample mean is almost zero, histogram and Q-Q plot all look good.
+
+\
+
+Now, we can apply tests to residuals:
+```{r}
+shapiro.test(res.arima111)
+Box.test(res.arima111, type=c("Box-Pierce"), lag = 14, fitdf = 2)
+Box.test(res.arima111, type=c("Ljung-Box"), lag = 14, fitdf = 2)
+Box.test((res.arima111)^2, type=c("Ljung-Box"), lag = 14, fitdf = 0)
+ar(res.arima111, aic = TRUE, order.max = NULL, method = c("yule-walker"))
+```
+
+Since the residuals passed Shapiro test, Box-Pierce test, Ljung-Box test, Mcleod-Li test and AR order selects 0, it's safe to conclude that model A passed all the tests.
+
+\
+
+(3) Diagnostic Checking on Model (B): $MA(1)$
+
+```{r}
+op <- par(mfrow = c(1,2))
+res.ma1 <- residuals(ma1)
+source('plot.roots.R')
+plot.roots(NULL, polyroot(c(1, -0.7186)), main="ARIMA(0,1,1) Roots ")
+plot.ts(res.ma1, main='Residuals of ARIMA(0,1,1)')
+abline(h=mean(res.ma1), col="blue")
+hist(res.ma1, breaks = 20, xlab="", prob=TRUE, main = 'ARIMA(0,1,1) Residuals Histogram')
+m.ma1 <- mean(res.ma1)
+std.ma1 <- sqrt(var(res.ma1))
+curve(dnorm(x,m.ma1,std.ma1), add=TRUE )
+qqnorm(res.ma1,main= "Normal Q-Q Plot for ARIMA(0,1,1)")
+qqline(res.ma1,col="blue")
+acf(res.ma1, lag.max=40, main = 'ACF of ARIMA(0,1,1) Residuals')
+pacf(res.ma1, lag.max=40, main = 'PACF of ARIMA(0,1,1) Residuals')
+par(op)
+```
+
+From the plots above, we can say that there is no trend, no visible change of variance, no seasonality, sample mean is almost zero, histogram and Q-Q plot all look good.
+
+\
+
+Now, we can apply tests to residuals:
+```{r}
+shapiro.test(res.ma1)
+Box.test(res.ma1, type=c("Box-Pierce"), lag = 14, fitdf = 1)
+Box.test(res.ma1, type=c("Ljung-Box"), lag = 14, fitdf = 1)
+Box.test((res.ma1)^2, type=c("Ljung-Box"), lag = 14, fitdf = 0)
+ar(res.ma1, aic = TRUE, order.max = NULL, method = c("yule-walker"))
+```
+
+Since the residuals passed Shapiro test, Box-Pierce test, Ljung-Box test, Mcleod-Li test and AR order selects 0, it's safe to conclude that model B passed all the tests.
+
+\
+
+(4) Final Model Selection:
+
+As we can see, both models passed all the test. According to the principle of parsimony, I should choose the one with the least coefficients, which is the $MA(1)$ model. Hence, the final model for de-trended data: $X_t$ follows $MA(1)$ model: $\nabla_1X_t = (1-0.7186_{0.0742}B)Z_t$ with $\hat{\sigma}^2_Z = 0.2371$.
+
+\
+
+## Forecasting
+
+Now, we can forecast by using our model B:
+```{r}
+library(forecast)
+# Fit into model and forecast
+fit <- arima(pek.ts, order=c(0,1,1), method="ML")
+forecast(fit)
+# To produce graph with 2 forecast on data:
+pred<- predict(fit, n.ahead = 2)
+U= pred$pred + 2*pred$se # Upper bound of prediction interval
+L= pred$pred - 2*pred$se # Lower bound of prediction interval 
+
+# Plot the forecast value for 2011 and 2012 with 95% CI on original data
+ts.plot(pek.ts, xlim=c(1821,2012), ylim = c(min(pek.ts),max(U)), main = 'ARIMA(0,1,1) Model Forecasting')
+lines(2011:2012, y =  U, col="blue", lty=2)
+lines(2011:2012, y =  L, col="blue", lty=2)
+points(2011:2012, pred$pred, col="red")
+legend("topleft",
+       legend = c('Model Data', 'Forecasted Values', '95% CI'),
+       fill = c('black','red','blue'),
+       border = "black")
+
+# Plot the forecast value for 2011 and 2012 with 95% CI on original data with real values
+pek.ts.real <- ts(data[,2], start = 1821, frequency = 1)
+ts.plot(pek.ts.real, xlim = c(1821,2012), ylim = c(min(pek.ts),max(U)), main = 'ARIMA(0,1,1) Model Forecasting with Test Sets')
+lines(U, col="blue", lty="dashed")
+lines(L, col="blue", lty="dashed")
+points(2011:2012, pred$pred, col="red")
+legend("topleft",
+       legend = c('Model Data and Test Sets', 'Forecasted Values', '95% CI'),
+       fill = c('black','red','blue'),
+       border = "black")
+```
+
+Look at the plots above, we can see that the real values from our test set is within the prediction interval. And we can plot the zoom-in graphs to see it more clearly:
+
+```{r}
+# Plot the forecast value for 2011 and 2012 with 95% CI on original data: Zoom In
+ts.plot(pek.ts, xlim=c(1950,2012), ylim = c(min(pek.ts),max(U)), main = 'ARIMA(0,1,1) Model Forecasting(Zoom In)')
+lines(2011:2012, y =  U, col="blue", lty=2)
+lines(2011:2012, y =  L, col="blue", lty=2)
+points(2011:2012, pred$pred, col="red")
+legend("topleft",
+       legend = c('Model Data', 'Forecasted Values', '95% CI'),
+       fill = c('black','red','blue'),
+       border = "black")
+
+# Plot the forecast value for 2011 and 2012 with 95% CI on original data with real values: Zoom In
+ts.plot(pek.ts.real, xlim = c(1950,2012), ylim = c(min(pek.ts),max(U)), main = 'ARIMA(0,1,1) Model Forecasting with Test Sets(Zoom In)')
+lines(U, col="blue", lty="dashed")
+lines(L, col="blue", lty="dashed")
+points(2011:2012, pred$pred, col="red")
+legend("topleft",
+       legend = c('Model Data and Test Sets', 'Forecasted Values', '95% CI'),
+       fill = c('black','red','blue'),
+       border = "black")
+```
+
