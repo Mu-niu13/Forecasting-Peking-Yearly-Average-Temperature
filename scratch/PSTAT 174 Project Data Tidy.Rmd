@@ -11,7 +11,7 @@ output: pdf_document
 
 (1) We first read in the csv file to get the raw data:
 ```{r}
-raw <- read.csv('GlobalLandTemperaturesByMajorCity.csv')
+raw <- read.csv('../data/GlobalLandTemperaturesByMajorCity.csv')
 head(raw) #Look at the raw data
 ```
 
